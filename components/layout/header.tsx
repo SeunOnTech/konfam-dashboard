@@ -57,10 +57,10 @@ export function Header({ title, activeThreats = 0 }: HeaderProps) {
         {/* Right side - Status and controls */}
         <div className="flex items-center gap-2 md:gap-4 ml-auto">
           {/* Real-time clock - hidden on mobile */}
-          <div className="hidden sm:flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
+          {/* <div className="hidden sm:flex items-center gap-2 text-xs md:text-sm text-muted-foreground">
             <Clock className="w-4 h-4 flex-shrink-0" />
             <span className="font-mono">{time || "--:--:--"}</span>
-          </div>
+          </div> */}
 
           {/* Active threats indicator - responsive text */}
           {activeThreats > 0 && (

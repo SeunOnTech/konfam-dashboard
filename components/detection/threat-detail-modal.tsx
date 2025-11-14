@@ -1,14 +1,14 @@
-// src/components/detection/threat-detail-modal.tsx
+// components/detection/threat-detail-modal.tsx
 "use client"
 
-import type { Threat } from "@/lib/types"
+import type { DashboardThreat } from "@/lib/api"
 import { AlertCircle, CheckCircle, Flag, Sparkles } from "lucide-react"
 import { useState } from "react"
 import { ResponseGenerationFlow } from "./response-generation-flow"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface ThreatDetailModalProps {
-  threat: Threat
+  threat: DashboardThreat
   isOpen: boolean
   onClose: () => void
 }
@@ -48,11 +48,47 @@ export function ThreatDetailModal({ threat, isOpen, onClose }: ThreatDetailModal
     }
   }
 
+  const timeLabel = threat.detectedAt
+    ? new Date(threat.detectedAt).toLocaleString("en-NG", {
+        hour12: false,
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Unknown time"
+
+  const content = threat.detectedPost?.content || "No content available"
+  const author =
+    threat.detectedPost?.authorHandle?.replace("@", "") ||
+    threat.brand?.name ||
+    "unknown"
+
+  const keywords = threat.detectedPost?.matchedKeywords || []
+
+  const likes = threat.detectedPost?.likeCount ?? threat.currentEngagement ?? 0
+  const retweets = threat.detectedPost?.retweetCount ?? 0
+  const replies = threat.detectedPost?.replyCount ?? 0
+
+  const panicScore = Math.round(Math.abs(threat.sentimentImpact || 0) * 100)
+  const threatLevelScore = Math.round((threat.threatScore || 0) * 100)
+
+  const verificationLabel =
+    threat.verificationStatus || "UNVERIFIED"
+  const verificationSummary =
+    threat.verificationSummary ||
+    "Claim not yet fully verified against internal data."
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto z-[100]">
         {selectedAction === "respond" ? (
-          <ResponseGenerationFlow threat={threat} onClose={() => setSelectedAction(null)} />
+          // NOTE: ResponseGenerationFlow likely still expects old Threat.
+          // Cast to any for now; we can refactor that component next.
+          <ResponseGenerationFlow
+            threat={threat as any}
+            onClose={() => setSelectedAction(null)}
+          />
         ) : (
           <>
             <DialogHeader>
@@ -63,85 +99,127 @@ export function ThreatDetailModal({ threat, isOpen, onClose }: ThreatDetailModal
             </DialogHeader>
 
             <div className="space-y-6">
-              {/* Threat Header */}
+              {/* Header */}
               <div>
                 <div className="flex items-start justify-between mb-3">
-                  <div className={`px-4 py-2 rounded-full text-sm font-bold ${getSeverityColor(threat.severity)}`}>
+                  <div
+                    className={`px-4 py-2 rounded-full text-sm font-bold ${getSeverityColor(
+                      threat.severity
+                    )}`}
+                  >
                     {threat.severity} SEVERITY
                   </div>
-                  <div className="text-xs text-muted-foreground">{threat.detectedAt.toLocaleTimeString()}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {timeLabel}
+                  </div>
                 </div>
-                <p className="text-lg font-semibold text-foreground mb-2">{threat.post.content}</p>
-                <p className="text-sm text-muted-foreground">Posted by @{threat.post.author.replace("@", "")}</p>
+                <p className="text-lg font-semibold text-foreground mb-2">
+                  {content}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Posted by @{author}
+                </p>
               </div>
 
               {/* Analysis Sections */}
               <div className="space-y-4">
+                {/* Detection analysis */}
                 <div>
-                  <h3 className="font-semibold text-foreground mb-3">Detection Analysis</h3>
+                  <h3 className="font-semibold text-foreground mb-3">
+                    Detection Analysis
+                  </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-muted/50 rounded-lg p-4">
-                      <p className="text-xs text-muted-foreground mb-1">Panic Factor Score</p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Sentiment Impact
+                      </p>
                       <div className="flex items-center gap-2">
-                        <div className="text-3xl font-bold text-primary">{(threat.panicFactor * 100).toFixed(0)}</div>
+                        <div className="text-3xl font-bold text-primary">
+                          {panicScore/100}
+                        </div>
                         <p className="text-xs text-muted-foreground">/100</p>
                       </div>
                     </div>
                     <div className="bg-muted/50 rounded-lg p-4">
-                      <p className="text-xs text-muted-foreground mb-1">Threat Level</p>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Threat Score
+                      </p>
                       <div className="flex items-center gap-2">
-                        <div className="text-3xl font-bold text-primary">{(threat.threatLevel * 100).toFixed(0)}</div>
+                        <div className="text-3xl font-bold text-primary">
+                          {threatLevelScore/100}
+                        </div>
                         <p className="text-xs text-muted-foreground">/100</p>
                       </div>
                     </div>
                   </div>
                 </div>
 
+                {/* Keywords */}
                 <div>
-                  <h3 className="font-semibold text-foreground mb-3">Detected Keywords</h3>
+                  <h3 className="font-semibold text-foreground mb-3">
+                    Detected Keywords
+                  </h3>
                   <div className="flex flex-wrap gap-2">
-                    {threat.keywords.map((keyword, idx) => (
-                      <span key={idx} className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm font-medium">
-                        {keyword}
+                    {keywords.length > 0 ? (
+                      keywords.map((keyword, idx) => (
+                        <span
+                          key={idx}
+                          className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm font-medium"
+                        >
+                          {keyword}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-xs text-muted-foreground">
+                        No explicit keywords detected
                       </span>
-                    ))}
+                    )}
                   </div>
                 </div>
 
+                {/* Engagement */}
                 <div>
-                  <h3 className="font-semibold text-foreground mb-3">Engagement Metrics</h3>
+                  <h3 className="font-semibold text-foreground mb-3">
+                    Engagement Metrics
+                  </h3>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="bg-muted/50 rounded-lg p-4">
                       <p className="text-xs text-muted-foreground">Likes</p>
                       <p className="text-2xl font-bold text-foreground">
-                        {threat.post.engagement.likes.toLocaleString()}
+                        {likes.toLocaleString()}
                       </p>
                     </div>
                     <div className="bg-muted/50 rounded-lg p-4">
-                      <p className="text-xs text-muted-foreground">Retweets</p>
+                      <p className="text-xs text-muted-foreground">
+                        Retweets
+                      </p>
                       <p className="text-2xl font-bold text-foreground">
-                        {threat.post.engagement.retweets.toLocaleString()}
+                        {retweets.toLocaleString()}
                       </p>
                     </div>
                     <div className="bg-muted/50 rounded-lg p-4">
                       <p className="text-xs text-muted-foreground">Replies</p>
                       <p className="text-2xl font-bold text-foreground">
-                        {threat.post.engagement.replies.toLocaleString()}
+                        {replies.toLocaleString()}
                       </p>
                     </div>
                   </div>
                 </div>
 
+                {/* Verification */}
                 <div>
-                  <h3 className="font-semibold text-foreground mb-3">Verification Status</h3>
+                  <h3 className="font-semibold text-foreground mb-3">
+                    Verification Status
+                  </h3>
                   <div className="bg-muted/50 rounded-lg p-4 border border-border">
                     <div className="flex items-start gap-3">
                       <AlertCircle className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
                       <div>
-                        <p className="font-semibold text-foreground text-sm">UNVERIFIED CLAIM</p>
+                        <p className="font-semibold text-foreground text-sm">
+                          {verificationLabel}
+                        </p>
                         <p className="text-xs text-muted-foreground mt-1">
-                          Bank systems show normal operational status. Account freeze claims not supported by verified
-                          data.
+                          {verificationSummary}
                         </p>
                       </div>
                     </div>
@@ -150,7 +228,7 @@ export function ThreatDetailModal({ threat, isOpen, onClose }: ThreatDetailModal
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-2 border-t border-border pt-4">
+              {/* <div className="space-y-2 border-t border-border pt-4">
                 <button
                   onClick={() => handleAction("respond")}
                   className={`w-full py-3 rounded-lg font-semibold transition-all duration-300 flex items-center justify-center gap-2 ${
@@ -160,7 +238,9 @@ export function ThreatDetailModal({ threat, isOpen, onClose }: ThreatDetailModal
                   }`}
                 >
                   <Sparkles className="w-4 h-4" />
-                  {actionStates.responded ? "Response Generated ✓" : "Generate Response"}
+                  {actionStates.responded
+                    ? "Response Generated ✓"
+                    : "Generate Response"}
                 </button>
 
                 <button
@@ -172,7 +252,9 @@ export function ThreatDetailModal({ threat, isOpen, onClose }: ThreatDetailModal
                   }`}
                 >
                   <CheckCircle className="w-4 h-4" />
-                  {actionStates.addressed ? "Marked as Addressed ✓" : "Mark as Addressed"}
+                  {actionStates.addressed
+                    ? "Marked as Addressed ✓"
+                    : "Mark as Addressed"}
                 </button>
 
                 <button
@@ -184,9 +266,11 @@ export function ThreatDetailModal({ threat, isOpen, onClose }: ThreatDetailModal
                   }`}
                 >
                   <Flag className="w-4 h-4" />
-                  {actionStates.flagged ? "Flagged for Review ✓" : "Flag for Review"}
+                  {actionStates.flagged
+                    ? "Flagged for Review ✓"
+                    : "Flag for Review"}
                 </button>
-              </div>
+              </div> */}
             </div>
           </>
         )}

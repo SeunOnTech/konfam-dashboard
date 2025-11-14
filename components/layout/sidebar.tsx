@@ -9,6 +9,7 @@ import {
   MessageSquare,
   BarChart3,
   DollarSign,
+  BoltIcon,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -19,11 +20,11 @@ import {
 const navItems = [
   { label: "Dashboard", href: "/", icon: Home },
   { label: "Threat Analysis", href: "/threats", icon: AlertTriangle },
-  { label: "Response Center", href: "/responses", icon: MessageSquare },
-  { label: "Analytics", href: "/analytics", icon: BarChart3 },
-  { label: "Full Analytics", href: "/full-analytics", icon: BarChart3 }, // Added Full Analytics navigation
+  // { label: "Response Center", href: "/responses", icon: MessageSquare },
+  { label: "Insights", href: "/analytics", icon: BoltIcon  },
+  { label: "Analytics", href: "/full-analytics", icon: BarChart3 }, // Added Full Analytics navigation
   { label: "Feedback", href: "/feedback", icon: Heart }, // Added Feedback navigation item
-  { label: "Bank Verification", href: "/bank", icon: DollarSign },
+  // { label: "Bank Verification", href: "/bank", icon: DollarSign },
 ]
 
 export function Sidebar() {
@@ -82,10 +83,15 @@ export function Sidebar() {
         <div className="flex flex-col h-full">
           {/* Header with logo */}
           <div className="flex items-center justify-between p-4 border-b border-sidebar-border">
-            {!collapsed || isMobile ? (
+           {!collapsed || isMobile ? (
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
-                  <AlertTriangle className="w-5 h-5 text-sidebar-primary-foreground" />
+                <div className="w-8 h-8 rounded-lg overflow-hidden flex-shrink-0">
+                  <img
+                    src="https://i.ibb.co/xqbhYcJq/Konfam-Logo-64x64.png"
+                    alt="Konfam logo"
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
                 </div>
                 <span className="text-lg font-bold text-sidebar-foreground">Konfam</span>
               </div>

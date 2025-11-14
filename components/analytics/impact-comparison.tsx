@@ -1,13 +1,13 @@
 export function ImpactComparison() {
   const beforeMetrics = [
     { label: "Panic Tweets", value: "42%", icon: "📊" },
-    { label: "Avg Engagement per Post", value: "892", icon: "💬" },
+    { label: "Avg Engagement per Post", value: "172", icon: "💬" },
     { label: "Misinformation Spread Rate", value: "68%", icon: "⚠️" },
   ]
 
   const afterMetrics = [
     { label: "Calm Tweets", value: "78%", icon: "📈" },
-    { label: "Avg Engagement per Post", value: "234", icon: "💬" },
+    { label: "Avg Engagement per Post", value: "34", icon: "💬" },
     { label: "Truth Amplification Rate", value: "91%", icon: "✓" },
   ]
 

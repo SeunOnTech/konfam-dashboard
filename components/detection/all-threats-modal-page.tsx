@@ -1,19 +1,22 @@
+// components/detection/all-threats-modal-page.tsx
 "use client"
 
-import { useState, useMemo } from "react"
 import { X, Search, ArrowUpDown, AlertCircle } from "lucide-react"
-import type { Threat } from "@/lib/types"
+import type { DashboardThreat } from "@/lib/api"
 import { ThreatCard } from "@/components/monitoring/threat-card"
+import { useMemo, useState } from "react"
 
 interface AllThreatsModalPageProps {
-  threats: Threat[]
+  threats: DashboardThreat[]
   isOpen: boolean
   onClose: () => void
-  onSelectThreat: (threat: Threat) => void
+  onSelectThreat: (threat: DashboardThreat) => void
   selectedId?: string
 }
 
-type SortOption = "severity" | "panic" | "engagement" | "recent"
+type SortOption = "severity" | "sentiment" | "engagement" | "recent"
+
+const severityOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 } as const
 
 export function AllThreatsModalPage({
   threats,
@@ -30,28 +33,44 @@ export function AllThreatsModalPage({
     let result = [...threats]
 
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(
-        (threat) =>
-          threat.post.content.toLowerCase().includes(query) ||
-          threat.keywords.some((k) => k.toLowerCase().includes(query)) ||
-          threat.post.author.toLowerCase().includes(query),
-      )
+      const q = searchQuery.toLowerCase()
+      result = result.filter((t) => {
+        const content = t.detectedPost?.content?.toLowerCase() || ""
+        const author = t.detectedPost?.authorHandle?.toLowerCase() || ""
+        const keywords = (t.detectedPost?.matchedKeywords || []).join(" ").toLowerCase()
+        return (
+          content.includes(q) ||
+          author.includes(q) ||
+          keywords.includes(q)
+        )
+      })
     }
 
     result.sort((a, b) => {
       switch (sortBy) {
         case "severity":
-          const severityOrder = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 }
           return severityOrder[a.severity] - severityOrder[b.severity]
-        case "panic":
-          return b.panicFactor - a.panicFactor
-        case "engagement":
-          const aEngagement = a.post.engagement.likes + a.post.engagement.retweets + a.post.engagement.replies
-          const bEngagement = b.post.engagement.likes + b.post.engagement.retweets + b.post.engagement.replies
-          return bEngagement - aEngagement
-        case "recent":
-          return b.detectedAt.getTime() - a.detectedAt.getTime()
+        case "sentiment": {
+          const aVal = Math.abs(a.sentimentImpact || 0)
+          const bVal = Math.abs(b.sentimentImpact || 0)
+          return bVal - aVal
+        }
+        case "engagement": {
+          const aEng =
+            (a.detectedPost?.likeCount || 0) +
+            (a.detectedPost?.retweetCount || 0) +
+            (a.detectedPost?.replyCount || 0)
+          const bEng =
+            (b.detectedPost?.likeCount || 0) +
+            (b.detectedPost?.retweetCount || 0) +
+            (b.detectedPost?.replyCount || 0)
+          return bEng - aEng
+        }
+        case "recent": {
+          const aTime = new Date(a.detectedAt).getTime()
+          const bTime = new Date(b.detectedAt).getTime()
+          return bTime - aTime
+        }
         default:
           return 0
       }
@@ -65,10 +84,13 @@ export function AllThreatsModalPage({
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-200" onClick={onClose} />
+      <div
+        className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-200"
+        onClick={onClose}
+      />
 
-      {/* Modal - Desktop/Tablet */}
-      <div className="hidden md:flex fixed inset-0 z-50 items-center justify-center p-4">
+      {/* Desktop/Tablet Modal */}
+      <div className="hidden md:flex fixed inset-0 z-[100] items-center justify-center p-4">
         <div
           className="bg-card border border-border rounded-lg w-full max-w-2xl max-h-[90vh] flex flex-col shadow-xl animate-in fade-in zoom-in-95 duration-200"
           onClick={(e) => e.stopPropagation()}
@@ -85,19 +107,19 @@ export function AllThreatsModalPage({
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground flex-shrink-0"
+              className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground hover:text-foreground"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Search and Sort Bar */}
+          {/* Search + Sort */}
           <div className="flex flex-col sm:flex-row gap-2 p-4 md:p-6 border-b border-border flex-shrink-0 bg-muted/30">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="Search threats, keywords, authors..."
+                placeholder="Search threats, content, authors..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -107,7 +129,7 @@ export function AllThreatsModalPage({
             <div className="relative">
               <button
                 onClick={() => setShowSortMenu(!showSortMenu)}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-background border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors whitespace-nowrap"
+                className="flex items-center gap-2 px-3 py-2 bg-background border border-border rounded-lg text-sm font-medium text-foreground hover:bg-muted transition-colors whitespace-nowrap"
               >
                 <ArrowUpDown className="w-4 h-4" />
                 Sort
@@ -117,7 +139,7 @@ export function AllThreatsModalPage({
                 <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg z-10 animate-in fade-in slide-in-from-top-2 duration-200">
                   {[
                     { value: "severity" as const, label: "By Severity" },
-                    { value: "panic" as const, label: "By Panic Factor" },
+                    { value: "sentiment" as const, label: "By Sentiment Impact" },
                     { value: "engagement" as const, label: "By Engagement" },
                     { value: "recent" as const, label: "Most Recent" },
                   ].map((option) => (
@@ -141,57 +163,60 @@ export function AllThreatsModalPage({
             </div>
           </div>
 
-          {/* Threats List */}
+          {/* List */}
           <div className="flex-1 overflow-y-auto divide-y divide-border">
             {filteredAndSortedThreats.length > 0 ? (
-              filteredAndSortedThreats.map((threat) => (
+              filteredAndSortedThreats.map((t) => (
                 <div
-                  key={threat.id}
+                  key={t.id}
                   className={`hover:bg-muted/50 transition-colors cursor-pointer ${
-                    threat.id === selectedId ? "bg-muted/50 border-l-4 border-l-primary" : ""
+                    t.id === selectedId ? "bg-muted/50 border-l-4 border-l-primary" : ""
                   }`}
-                  onClick={() => onSelectThreat(threat)}
+                  onClick={() => onSelectThreat(t)}
                 >
-                  <ThreatCard threat={threat} isSelected={threat.id === selectedId} />
+                  <ThreatCard threat={t} isSelected={t.id === selectedId} />
                 </div>
               ))
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center py-12 px-4">
                 <AlertCircle className="w-12 h-12 text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground text-center">No threats match your search</p>
+                <p className="text-muted-foreground text-center">
+                  No threats match your search
+                </p>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Bottom Sheet - Mobile */}
-      <div className="md:hidden fixed inset-0 z-50 flex flex-col pointer-events-none">
+      {/* Mobile Bottom Sheet */}
+      <div className="md:hidden fixed inset-0 z-[100] flex flex-col pointer-events-none">
         <div className="flex-1" onClick={onClose} />
-
         <div
-          className="bg-card rounded-t-2xl border-t border-border border-x flex flex-col max-h-[90vh] animate-in slide-in-from-bottom duration-300 pointer-events-auto"
+          className="bg-card rounded-t-2xl border-t border-border border-x border-x-border flex flex-col max-h-[90vh] animate-in slide-in-from-bottom duration-300 pointer-events-auto"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Handle bar */}
           <div className="flex justify-center pt-2 pb-1">
             <div className="w-12 h-1 bg-muted rounded-full" />
           </div>
 
-          {/* Header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">All Threats ({filteredAndSortedThreats.length})</h2>
+              <h2 className="text-lg font-semibold text-foreground">
+                All Threats ({filteredAndSortedThreats.length})
+              </h2>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-muted rounded-lg transition-colors">
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-muted rounded-lg transition-colors"
+            >
               <X className="w-5 h-5" />
             </button>
           </div>
 
-          {/* Search and Sort Bar */}
           <div className="flex flex-col gap-2 p-3 border-b border-border bg-muted/30">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search threats..."
@@ -214,7 +239,7 @@ export function AllThreatsModalPage({
                 <div className="absolute right-0 mt-2 w-48 bg-card border border-border rounded-lg shadow-lg z-10 animate-in fade-in slide-in-from-top-2 duration-200">
                   {[
                     { value: "severity" as const, label: "By Severity" },
-                    { value: "panic" as const, label: "By Panic Factor" },
+                    { value: "sentiment" as const, label: "By Sentiment Impact" },
                     { value: "engagement" as const, label: "By Engagement" },
                     { value: "recent" as const, label: "Most Recent" },
                   ].map((option) => (
@@ -238,24 +263,25 @@ export function AllThreatsModalPage({
             </div>
           </div>
 
-          {/* Threats List */}
-          <div className="flex-1 overflow-y-auto divide-y divide-border pb-safe">
+          <div className="flex-1 overflow-y-auto divide-y divide-border">
             {filteredAndSortedThreats.length > 0 ? (
-              filteredAndSortedThreats.map((threat) => (
+              filteredAndSortedThreats.map((t) => (
                 <div
-                  key={threat.id}
+                  key={t.id}
                   className={`hover:bg-muted/50 transition-colors cursor-pointer ${
-                    threat.id === selectedId ? "bg-muted/50 border-l-4 border-l-primary" : ""
+                    t.id === selectedId ? "bg-muted/50 border-l-4 border-l-primary" : ""
                   }`}
-                  onClick={() => onSelectThreat(threat)}
+                  onClick={() => onSelectThreat(t)}
                 >
-                  <ThreatCard threat={threat} isSelected={threat.id === selectedId} />
+                  <ThreatCard threat={t} isSelected={t.id === selectedId} />
                 </div>
               ))
             ) : (
               <div className="flex flex-col items-center justify-center py-8 px-4">
                 <AlertCircle className="w-12 h-12 text-muted-foreground/50 mb-3" />
-                <p className="text-muted-foreground text-center">No threats match your search</p>
+                <p className="text-muted-foreground text-center">
+                  No threats match your search
+                </p>
               </div>
             )}
           </div>

@@ -6,35 +6,27 @@ import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { ThemeProvider } from "./theme-provider"
 import { DemoControls } from "./demo-controls"
+import { DashboardProvider } from "@/context/dashboard-context" // ✅ new import
 
+/* ------------------------------------------------------------
+ * Fonts
+ * ------------------------------------------------------------ */
 const satoshi = localFont({
   src: [
-    {
-      path: "../public/fonts/Satoshi-Light.woff2",
-      weight: "300",
-    },
-    {
-      path: "../public/fonts/Satoshi-Regular.woff2",
-      weight: "400",
-    },
-    {
-      path: "../public/fonts/Satoshi-Medium.woff2",
-      weight: "500",
-    },
-    {
-      path: "../public/fonts/Satoshi-Bold.woff2",
-      weight: "700",
-    },
-    {
-      path: "../public/fonts/Satoshi-Black.woff2",
-      weight: "900",
-    },
+    { path: "../public/fonts/Satoshi-Light.woff2", weight: "300" },
+    { path: "../public/fonts/Satoshi-Regular.woff2", weight: "400" },
+    { path: "../public/fonts/Satoshi-Medium.woff2", weight: "500" },
+    { path: "../public/fonts/Satoshi-Bold.woff2", weight: "700" },
+    { path: "../public/fonts/Satoshi-Black.woff2", weight: "900" },
   ],
   variable: "--font-satoshi",
 })
 
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
+/* ------------------------------------------------------------
+ * Metadata
+ * ------------------------------------------------------------ */
 export const metadata: Metadata = {
   title: "Konfam Dashboard",
   description: "Crisis Management & Threat Detection System",
@@ -57,17 +49,27 @@ export const metadata: Metadata = {
   },
 }
 
+/* ------------------------------------------------------------
+ * Root Layout
+ * ------------------------------------------------------------ */
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode
-}>) {
+}) {
   return (
-    <html lang="en" suppressHydrationWarning style={{ fontFamily: satoshi.style.fontFamily }}>
-      <body className={`font-sans antialiased`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      style={{ fontFamily: satoshi.style.fontFamily }}
+    >
+      <body className="font-sans antialiased">
         <ThemeProvider>
-          {children}
-          <DemoControls />
+          {/* All dashboard data + WebSocket context is now global */}
+          <DashboardProvider>
+            {children}
+            <DemoControls />
+          </DashboardProvider>
         </ThemeProvider>
         <Analytics />
       </body>
@@ -75,23 +77,46 @@ export default function RootLayout({
   )
 }
 
-
-
 // import type React from "react"
 // import type { Metadata } from "next"
-// import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google"
+// import { Geist_Mono } from "next/font/google"
+// import localFont from "next/font/local"
 // import { Analytics } from "@vercel/analytics/next"
 // import "./globals.css"
 // import { ThemeProvider } from "./theme-provider"
 // import { DemoControls } from "./demo-controls"
 
-// const _geist = Geist({ subsets: ["latin"] })
+// const satoshi = localFont({
+//   src: [
+//     {
+//       path: "../public/fonts/Satoshi-Light.woff2",
+//       weight: "300",
+//     },
+//     {
+//       path: "../public/fonts/Satoshi-Regular.woff2",
+//       weight: "400",
+//     },
+//     {
+//       path: "../public/fonts/Satoshi-Medium.woff2",
+//       weight: "500",
+//     },
+//     {
+//       path: "../public/fonts/Satoshi-Bold.woff2",
+//       weight: "700",
+//     },
+//     {
+//       path: "../public/fonts/Satoshi-Black.woff2",
+//       weight: "900",
+//     },
+//   ],
+//   variable: "--font-satoshi",
+// })
+
 // const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 // export const metadata: Metadata = {
 //   title: "Konfam Dashboard",
 //   description: "Crisis Management & Threat Detection System",
-//   generator: "v0.app",
 //   icons: {
 //     icon: [
 //       {
@@ -117,7 +142,7 @@ export default function RootLayout({
 //   children: React.ReactNode
 // }>) {
 //   return (
-//     <html lang="en" suppressHydrationWarning>
+//     <html lang="en" suppressHydrationWarning style={{ fontFamily: satoshi.style.fontFamily }}>
 //       <body className={`font-sans antialiased`}>
 //         <ThemeProvider>
 //           {children}
